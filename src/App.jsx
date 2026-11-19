@@ -44,6 +44,13 @@ const formatCPF = (value) => {
     .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
 };
 
+const formatPhone = (value) => {
+  if (!value) return '';
+  const d = value.replace(/\D/g, '').slice(0, 11);
+  if (d.length <= 10) return d.replace(/(\d{2})(\d)/, '($1) $2').replace(/(\d{4})(\d)/, '$1-$2');
+  return d.replace(/(\d{2})(\d)/, '($1) $2').replace(/(\d{5})(\d)/, '$1-$2');
+};
+
 // ==========================================
 // LOGO COMPONENT
 // ==========================================
@@ -85,7 +92,7 @@ export default function App() {
   const [currentView, setCurrentView] = useState('home');
 
   // Modals & User Sessions
-  const [activeModal, setActiveModal] = useState(null); // 'admin-login' | 'admin-dashboard' | null
+  const [activeModal, setActiveModal] = useState(null); // 'quero-doar' | 'admin-login' | 'admin-dashboard' | null
   const [userSession, setUserSession] = useState(null);
   const [adminSession, setAdminSession] = useState(null);
   const [toastMessage, setToastMessage] = useState(null);
@@ -96,6 +103,15 @@ export default function App() {
   const [loginErr, setLoginErr] = useState('');
   const [adminForm, setAdminForm] = useState({ matricula: '', chaveSeguranca: '', senha: '' });
   const [adminErr, setAdminErr] = useState('');
+
+  // Donor Express Registration Form (Quero Doar)
+  const [donorForm, setDonorForm] = useState({
+    nome: '',
+    telefone: '',
+    zonaMarilia: 'Zona Sul',
+    bairro: '',
+  });
+  const [donorErr, setDonorErr] = useState('');
 
   // Simulator & FAQ State
   const [mlPerDay, setMlPerDay] = useState(150);
@@ -127,6 +143,48 @@ export default function App() {
   const showToast = (msg, type = 'success') => {
     setToastMessage({ msg, type });
     setTimeout(() => setToastMessage(null), 4000);
+  };
+
+  // ------------------------------------------
+  // DONOR REGISTRATION (QUERO DOAR -> ENVIA PRO SISTEMA)
+  // ------------------------------------------
+  const handleDonorSubmit = (e) => {
+    e.preventDefault();
+    setDonorErr('');
+
+    if (!donorForm.nome.trim() || donorForm.nome.trim().split(' ').length < 2) {
+      setDonorErr('Por favor, informe seu nome e sobrenome.');
+      return;
+    }
+
+    const rawPhone = donorForm.telefone.replace(/\D/g, '');
+    if (rawPhone.length < 10) {
+      setDonorErr('Informe um WhatsApp/Telefone válido com DDD.');
+      return;
+    }
+
+    if (!donorForm.bairro.trim()) {
+      setDonorErr('Informe o seu bairro em Marília.');
+      return;
+    }
+
+    const protocolNumber = `BLH-MAR-${Math.floor(100000 + Math.random() * 900000)}`;
+    const newSession = {
+      nome: donorForm.nome.trim(),
+      cpf: 'Cadastrada no Sistema Express',
+      email: 'Aguardando contato via WhatsApp',
+      telefone: donorForm.telefone,
+      bairro: donorForm.bairro.trim(),
+      zonaMarilia: donorForm.zonaMarilia,
+      protocolo: protocolNumber,
+      dataCadastro: new Date().toLocaleDateString('pt-BR'),
+      status: 'Doadora Cadastrada • Aguardando Coleta BLH',
+    };
+
+    setUserSession(newSession);
+    setActiveModal(null);
+    setCurrentView('dashboard');
+    showToast(`Cadastro enviado com sucesso para o sistema! Protocolo: ${protocolNumber}`);
   };
 
   // ------------------------------------------
@@ -296,8 +354,8 @@ export default function App() {
               </button>
             </form>
 
-            {/* Quick Demo Credentials for Fast Testing */}
-            <div className="mt-6 pt-5 border-t border-[#EFECE6] text-center">
+            {/* Quick Demo Credentials & Quero Doar option */}
+            <div className="mt-6 pt-5 border-t border-[#EFECE6] text-center space-y-3">
               <button
                 type="button"
                 onClick={handleFillDemoLogin}
@@ -305,7 +363,22 @@ export default function App() {
               >
                 <span>💡 Preencher dados de teste (Mariana)</span>
               </button>
-              <p className="text-[11px] text-[#8C8275] mt-3">
+
+              <div className="text-xs text-[#8C8275]">
+                Ainda não doa leite em Marília?{' '}
+                <button
+                  onClick={() => {
+                    setCurrentView('home');
+                    setDonorErr('');
+                    setActiveModal('quero-doar');
+                  }}
+                  className="font-semibold text-[#4A6B5D] underline"
+                >
+                  Quero Doar
+                </button>
+              </div>
+
+              <p className="text-[11px] text-[#8C8275]">
                 Banco de Leite Humano de Marília • HCFAMEMA
               </p>
             </div>
@@ -381,7 +454,7 @@ export default function App() {
                   Olá, {userSession.nome.split(' ')[0]}! O sistema está sendo preparado.
                 </h2>
                 <p className="text-sm text-[#8C8275] max-w-2xl">
-                  Você realizou o login com sucesso. Esta área do sistema interno do <strong>Banco de Leite Humano de Marília</strong> está em fase ativa de desenvolvimento e em breve contará com agendamentos automatizados, rastreamento de kits e relatórios.
+                  Seu cadastro foi vinculado com sucesso. Esta área do sistema interno do <strong>Banco de Leite Humano de Marília</strong> está em fase ativa de desenvolvimento e em breve contará com agendamentos automatizados, rastreamento de kits e relatórios.
                 </p>
               </div>
             </div>
@@ -399,7 +472,7 @@ export default function App() {
             </div>
             <div className="bg-white p-4 rounded-2xl border border-[#EFECE6] shadow-sm">
               <span className="text-[11px] uppercase tracking-wider text-[#8C8275] block mb-1">
-                CPF Cadastrado
+                Identificação
               </span>
               <span className="font-mono font-medium text-[#1E242B] text-sm">
                 {userSession.cpf}
@@ -605,16 +678,28 @@ export default function App() {
                 <span>Painel Admin</span>
               </button>
             ) : (
-              <button
-                onClick={() => {
-                  setLoginErr('');
-                  setCurrentView('login');
-                }}
-                className="px-6 py-2.5 rounded-full bg-[#4A6B5D] text-white font-semibold text-sm hover:bg-[#3d594d] transition-all shadow-md shadow-[#4A6B5D]/20 flex items-center gap-2 transform hover:-translate-y-0.5"
-              >
-                <User className="w-4 h-4" />
-                <span>Entrar</span>
-              </button>
+              <>
+                <button
+                  onClick={() => {
+                    setLoginErr('');
+                    setCurrentView('login');
+                  }}
+                  className="px-4 py-2 text-sm font-semibold text-[#1E242B] hover:text-[#4A6B5D] transition-colors"
+                >
+                  Entrar
+                </button>
+
+                <button
+                  onClick={() => {
+                    setDonorErr('');
+                    setActiveModal('quero-doar');
+                  }}
+                  className="px-5 py-2.5 rounded-full bg-[#4A6B5D] text-white font-semibold text-sm hover:bg-[#3d594d] transition-all shadow-md shadow-[#4A6B5D]/20 flex items-center gap-2 transform hover:-translate-y-0.5"
+                >
+                  <Heart className="w-4 h-4 fill-white/20" />
+                  <span>Quero Doar</span>
+                </button>
+              </>
             )}
           </div>
 
@@ -628,16 +713,28 @@ export default function App() {
                 <User className="w-5 h-5" />
               </button>
             ) : (
-              <button
-                onClick={() => {
-                  setLoginErr('');
-                  setCurrentView('login');
-                }}
-                className="px-4 py-2 rounded-full bg-[#4A6B5D] text-white font-semibold text-xs flex items-center gap-1.5 shadow-md"
-              >
-                <User className="w-3.5 h-3.5" />
-                <span>Entrar</span>
-              </button>
+              <>
+                <button
+                  onClick={() => {
+                    setDonorErr('');
+                    setActiveModal('quero-doar');
+                  }}
+                  className="px-3 py-1.5 rounded-full bg-[#4A6B5D] text-white font-semibold text-xs flex items-center gap-1 shadow-md"
+                >
+                  <Heart className="w-3.5 h-3.5 fill-white" />
+                  <span>Doar</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setLoginErr('');
+                    setCurrentView('login');
+                  }}
+                  className="p-2 rounded-full hover:bg-[#EFECE6] text-[#1E242B]"
+                >
+                  <User className="w-4 h-4" />
+                </button>
+              </>
             )}
             <button
               onClick={() => setMobileMenuOpen((o) => !o)}
@@ -669,22 +766,35 @@ export default function App() {
                   {label}
                 </a>
               ))}
-              <button
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  setCurrentView(userSession ? 'dashboard' : 'login');
-                }}
-                className="mt-2 w-full py-3 rounded-xl bg-[#4A6B5D] text-white font-semibold text-sm flex items-center justify-center gap-2"
-              >
-                <User className="w-4 h-4" />
-                <span>{userSession ? 'Meu Painel' : 'Acessar Conta / Login'}</span>
-              </button>
+              <div className="pt-2 flex flex-col gap-2">
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setDonorErr('');
+                    setActiveModal('quero-doar');
+                  }}
+                  className="w-full py-3 rounded-xl bg-[#4A6B5D] text-white font-semibold text-sm flex items-center justify-center gap-2"
+                >
+                  <Heart className="w-4 h-4 fill-white" />
+                  <span>Quero Doar</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setCurrentView('login');
+                  }}
+                  className="w-full py-2.5 rounded-xl bg-[#FAF9F6] text-[#1E242B] font-semibold text-sm border border-[#EFECE6]"
+                >
+                  Fazer Login no Sistema
+                </button>
+              </div>
             </nav>
           </div>
         )}
       </header>
 
-      {/* ========== HERO SECTION ========== */}
+      {/* ========== HERO SECTION (COM O BOTÃO QUERO DOAR DA FOTO) ========== */}
       <section className="relative overflow-hidden pt-10 pb-16 sm:pt-16 sm:pb-24 lg:pt-20 lg:pb-28 border-b border-[#EFECE6]">
         <div className="absolute top-0 right-0 w-64 sm:w-96 h-64 sm:h-96 bg-[#EBF1EE] rounded-full blur-3xl opacity-60 pointer-events-none -z-10 translate-x-1/3 -translate-y-1/3"></div>
         <div className="absolute bottom-0 left-0 w-56 sm:w-80 h-56 sm:h-80 bg-[#EFECE6] rounded-full blur-3xl opacity-70 pointer-events-none -z-10 -translate-x-1/3 translate-y-1/3"></div>
@@ -710,14 +820,29 @@ export default function App() {
                 O <strong>Banco de Leite Humano de Marília</strong> (HCFAMEMA) busca o leite materno doado diretamente na sua casa em frascos esterilizados, sem nenhum custo. Cada gota transforma o futuro dos bebês prematuros na UTI Neonatal.
               </p>
 
+              {/* ACTION BUTTONS: HERO BUTTON QUERO DOAR RESTAURADO IGUAL ANTES */}
               <div className="pt-1 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 w-full sm:w-auto">
-                <button
-                  onClick={() => setCurrentView(userSession ? 'dashboard' : 'login')}
-                  className="px-8 py-4 rounded-full bg-[#4A6B5D] text-white font-medium text-base hover:bg-[#3d594d] transition-all shadow-lg shadow-[#4A6B5D]/25 flex items-center justify-center gap-3 transform hover:-translate-y-0.5"
-                >
-                  <User className="w-5 h-5" />
-                  <span>{userSession ? 'Acessar Meu Painel' : 'Fazer Login no Sistema'}</span>
-                </button>
+                {userSession ? (
+                  <button
+                    onClick={() => setCurrentView('dashboard')}
+                    className="px-8 py-4 rounded-full bg-[#4A6B5D] text-white font-medium text-base hover:bg-[#3d594d] transition-all shadow-lg shadow-[#4A6B5D]/25 flex items-center justify-center gap-3 transform hover:-translate-y-0.5"
+                  >
+                    <User className="w-5 h-5" />
+                    <span>Acessar Meu Painel</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setDonorErr('');
+                      setActiveModal('quero-doar');
+                    }}
+                    className="px-8 py-4 rounded-full bg-[#4A6B5D] text-white font-medium text-base hover:bg-[#3d594d] transition-all shadow-lg shadow-[#4A6B5D]/25 flex items-center justify-center gap-3 transform hover:-translate-y-0.5"
+                  >
+                    <Heart className="w-5 h-5 fill-white" />
+                    <span>Quero Doar</span>
+                  </button>
+                )}
+
                 <a
                   href="#como-funciona"
                   className="px-6 py-4 rounded-full bg-[#EFECE6] text-[#1E242B] font-medium text-base hover:bg-[#e4ded6] transition-all flex items-center justify-center gap-2 border border-[#8C8275]/20"
@@ -1144,6 +1269,15 @@ export default function App() {
               <div className="flex flex-col space-y-2 text-xs text-stone-300">
                 <button
                   onClick={() => {
+                    setDonorErr('');
+                    setActiveModal('quero-doar');
+                  }}
+                  className="text-left hover:text-emerald-400 transition-colors"
+                >
+                  Quero Doar
+                </button>
+                <button
+                  onClick={() => {
                     setLoginErr('');
                     setCurrentView(userSession ? 'dashboard' : 'login');
                   }}
@@ -1175,6 +1309,141 @@ export default function App() {
           </div>
         </div>
       </footer>
+
+      {/* ========== MODAL: QUERO DOAR (ENVIA PARA O SISTEMA) ========== */}
+      {activeModal === 'quero-doar' && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm animate-fadeIn"
+          onClick={(e) => e.target === e.currentTarget && setActiveModal(null)}
+        >
+          <div className="bg-white rounded-t-3xl sm:rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-[#EFECE6] relative max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => setActiveModal(null)}
+              className="absolute top-5 right-5 p-2 rounded-full hover:bg-[#FAF9F6] text-[#8C8275]"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <div className="sm:hidden w-10 h-1 bg-[#EFECE6] rounded-full mx-auto mb-5"></div>
+
+            <div className="text-center mb-6">
+              <div className="inline-flex p-3 rounded-full bg-[#EBF1EE] text-[#4A6B5D] mb-3">
+                <Heart className="w-6 h-6 fill-[#4A6B5D]/20 text-[#4A6B5D]" />
+              </div>
+              <h3 className="font-serif text-2xl font-semibold text-[#1E242B]">
+                Quero Doar Leite Materno
+              </h3>
+              <p className="text-xs text-[#8C8275] mt-1">
+                Cadastre-se para receber a visita da equipe do BLH em sua casa em Marília-SP
+              </p>
+            </div>
+
+            {donorErr && (
+              <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-600 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <span>{donorErr}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleDonorSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-[#1E242B] mb-1">
+                  Nome Completo *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: Maria Oliveira Santos"
+                  value={donorForm.nome}
+                  onChange={(e) => setDonorForm({ ...donorForm, nome: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl border border-[#EFECE6] bg-[#FAF9F6] text-sm focus:outline-none focus:border-[#4A6B5D] transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#1E242B] mb-1">
+                  WhatsApp / Celular com DDD *
+                </label>
+                <input
+                  type="text"
+                  required
+                  maxLength={15}
+                  placeholder="(14) 99999-9999"
+                  value={donorForm.telefone}
+                  onChange={(e) =>
+                    setDonorForm({ ...donorForm, telefone: formatPhone(e.target.value) })
+                  }
+                  className="w-full px-4 py-3 rounded-xl border border-[#EFECE6] bg-[#FAF9F6] text-sm focus:outline-none focus:border-[#4A6B5D] transition-colors"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-[#1E242B] mb-1">
+                    Região em Marília *
+                  </label>
+                  <select
+                    value={donorForm.zonaMarilia}
+                    onChange={(e) =>
+                      setDonorForm({ ...donorForm, zonaMarilia: e.target.value })
+                    }
+                    className="w-full px-3 py-3 rounded-xl border border-[#EFECE6] bg-[#FAF9F6] text-sm focus:outline-none focus:border-[#4A6B5D]"
+                  >
+                    <option value="Zona Sul">Zona Sul</option>
+                    <option value="Zona Norte">Zona Norte</option>
+                    <option value="Zona Leste">Zona Leste</option>
+                    <option value="Zona Oeste">Zona Oeste</option>
+                    <option value="Centro">Centro</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#1E242B] mb-1">
+                    Bairro em Marília *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: Jardim Esmeralda"
+                    value={donorForm.bairro}
+                    onChange={(e) =>
+                      setDonorForm({ ...donorForm, bairro: e.target.value })
+                    }
+                    className="w-full px-4 py-3 rounded-xl border border-[#EFECE6] bg-[#FAF9F6] text-sm focus:outline-none focus:border-[#4A6B5D] transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-[#EBF1EE] text-xs text-[#4A6B5D] leading-relaxed flex items-start gap-2.5">
+                <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <span>
+                  O Banco de Leite de Marília (HCFAMEMA) fornece os frascos esterilizados gratuitamente e agenda a coleta no melhor horário para você.
+                </span>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-3.5 rounded-xl bg-[#4A6B5D] text-white font-semibold text-sm hover:bg-[#3d594d] transition-all shadow-md shadow-[#4A6B5D]/25 flex items-center justify-center gap-2 mt-2"
+              >
+                <Heart className="w-4 h-4 fill-white" />
+                <span>Enviar para o Sistema</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </form>
+
+            <div className="mt-4 pt-3 border-t border-[#EFECE6] text-center text-xs text-[#8C8275]">
+              Já possui cadastro no sistema?{' '}
+              <button
+                onClick={() => {
+                  setActiveModal(null);
+                  setCurrentView('login');
+                }}
+                className="font-semibold text-[#4A6B5D] underline"
+              >
+                Fazer Login
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ========== MODAL: ADMIN LOGIN ========== */}
       {activeModal === 'admin-login' && (
