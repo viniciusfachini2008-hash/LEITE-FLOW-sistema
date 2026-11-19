@@ -106,17 +106,15 @@ export default function App() {
     const handleHash = () => {
       const hash = window.location.hash;
       if (hash === '#login') {
-        if (!userSession) setCurrentView('login');
+        setCurrentView('login');
       } else if (hash === '#admin-blh') {
         setActiveModal('admin-login');
-      } else if (hash === '' || hash === '#') {
-        if (currentView !== 'dashboard') setCurrentView('home');
       }
     };
     handleHash();
     window.addEventListener('hashchange', handleHash);
     return () => window.removeEventListener('hashchange', handleHash);
-  }, [userSession, currentView]);
+  }, []);
 
   // Lock body scroll on modal
   useEffect(() => {
