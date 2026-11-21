@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import BottleExplodedScroll from './components/BottleExplodedScroll';
 import {
   Heart,
   Truck,
@@ -64,7 +65,7 @@ const LeiteFlowLogo = ({ variant = 'default', size = 'md', className = '' }) => 
       <div className={`inline-flex items-center select-none ${className}`}>
         <div className="bg-white/95 px-3 py-1.5 rounded-xl shadow-sm flex items-center">
           <img
-            src="/logo.png"
+            src={`${import.meta.env.BASE_URL}logo.png`}
             alt="LeiteFlow"
             className={`${sizeClass} w-auto object-contain`}
           />
@@ -76,7 +77,7 @@ const LeiteFlowLogo = ({ variant = 'default', size = 'md', className = '' }) => 
   return (
     <div className={`inline-flex items-center select-none ${className}`}>
       <img
-        src="/logo.png"
+        src={`${import.meta.env.BASE_URL}logo.png`}
         alt="LeiteFlow"
         className={`${sizeClass} w-auto object-contain`}
       />
@@ -793,6 +794,19 @@ export default function App() {
           </div>
         )}
       </header>
+
+      {/* ========== 3D CINEMATIC SCROLL-VIDEO HERO ========== */}
+      <BottleExplodedScroll
+        userSession={userSession}
+        onQueroDoar={() => {
+          setDonorErr('');
+          setActiveModal('quero-doar');
+        }}
+        onLogin={() => {
+          setLoginErr('');
+          setCurrentView(userSession ? 'dashboard' : 'login');
+        }}
+      />
 
       {/* ========== HERO SECTION (COM O BOTÃO QUERO DOAR DA FOTO) ========== */}
       <section className="relative overflow-hidden pt-10 pb-16 sm:pt-16 sm:pb-24 lg:pt-20 lg:pb-28 border-b border-[#EFECE6]">
