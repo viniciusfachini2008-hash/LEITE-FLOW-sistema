@@ -10,7 +10,7 @@ import {
   User,
 } from 'lucide-react';
 
-const TOTAL_FRAMES = 119;
+const TOTAL_FRAMES = 108;
 
 const FRAME_URLS = Array.from({ length: TOTAL_FRAMES }, (_, index) => {
   const num = String(index + 1).padStart(3, '0');
